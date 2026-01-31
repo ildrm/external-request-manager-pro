@@ -20,7 +20,8 @@ A professional WordPress plugin for monitoring, analyzing, and controlling exter
 - **Soft Delete**: Mark requests as deleted without losing history
 - **Bulk Operations**: Block, unblock, or delete multiple requests at once
 - **Request Review**: Comprehensive review modal with all request details
-- **Rate Limiting**: Set custom rate limits per host (calls per interval)- 🔗 **Separate by Method**: Track GET and POST requests separately
+- **Rate Limiting**: Set custom rate limits per host (calls per interval)
+- **Separate by Method**: Track GET and POST requests separately
 - **URL Logging**: Optional tracking of all unique URLs per request (configurable limit)
 - **URL Review Dropdown**: View all logged URLs in the review modal
 - **In-Modal Actions**: Block, delete, or save rate limits directly from review modal
@@ -261,7 +262,7 @@ do_action('erm_pro_cleanup', $deleted_count);
 
 ## 📝 Changelog
 
-### Version 2.0.0 - 2024
+### Version 2.0.0 – Q1 2026
 - Complete rewrite with modular architecture
 - Added request source detection (plugin/theme)
 - Implemented professional control panel
