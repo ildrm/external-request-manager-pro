@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 -
 ## v2.5.3 — 2026-02-03
-- Release: Sync versions across package files, Fix Functionality, update docs, and minor fixes.
+- Release: Sync versions across package files, Fix Functionality, update docs, and general reforms.
 
 ## v2.2.5 — 2026-02-02
 - Fix: Correct request counts after Clear/Clear Except operations.
