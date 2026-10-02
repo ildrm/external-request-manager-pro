@@ -702,63 +702,63 @@
     .erm-stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .erm-header {
         margin: -10px -10px 20px -10px;
         padding: 20px 10px;
     }
-    
+
     .erm-header h1 {
         padding: 0;
         font-size: 24px;
     }
-    
+
     .erm-filter-tabs {
         flex-direction: column;
     }
-    
+
     .erm-filter-tabs a {
         border-bottom: 3px solid transparent;
         border-left: 3px solid transparent;
         padding-left: 10px;
     }
-    
+
     .erm-filter-tabs a.active {
         border-bottom: none;
         border-left: 3px solid var(--erm-primary);
     }
-    
+
     .erm-search-form {
         flex-direction: column;
     }
-    
+
     .erm-search-input {
         width: 100%;
     }
-    
+
     .erm-toolbar {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .erm-bulk-actions {
         flex-direction: column;
     }
-    
+
     .erm-bulk-actions select,
     .erm-bulk-actions button {
         width: 100%;
     }
-    
+
     .erm-requests-table {
         font-size: 13px;
     }
-    
+
     .erm-requests-table td,
     .erm-requests-table th {
         padding: 10px 8px;
     }
-    
+
     .erm-modal-content {
         max-width: 90%;
     }
@@ -979,4 +979,20 @@
 
 .erm-warning-box strong {
     font-weight: 600;
+}
+/* Dialog content and narrow screens. */
+.erm-modal { box-sizing: border-box; }
+.erm-detail-value { white-space: pre-wrap; }
+.erm-response-body { margin: 0; max-height: 200px; overflow: auto; flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.erm-rate-limit-section > div { flex-wrap: wrap; }
+.erm-rate-limit-section input { min-width: 0; max-width: 100%; }
+.erm-pagination .page-numbers { padding: 8px 12px; }
+.erm-modal-content:focus, .erm-modal button:focus-visible { outline: 2px solid var(--erm-primary); outline-offset: 2px; }
+@media (max-width: 600px) {
+    .erm-search-wrapper { flex-wrap: wrap; min-width: 0; }
+    .erm-search-input { min-width: 0; flex-basis: 100%; }
+    .erm-detail-item { flex-direction: column; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .erm-pro-wrap *, .erm-modal * { transition: none !important; animation: none !important; }
 }

@@ -1,7 +1,21 @@
 # Changelog
 
 All notable changes to this project are documented in this file.
--
+
+## Unreleased
+
+- Preserve populated tables and user settings on reactivation; verify in-place schema updates before advancing database version 1.2.0.
+- Convert legacy tables to InnoDB and make audit insertion/deletion transactional.
+- Repair HTTP response callback arguments and correlate nested/concurrent calls with request tokens.
+- Apply blocking and rate policies across host methods, including legacy trailing-dot hosts and redirect targets.
+- Honor calls per interval with temporary, serialized quota state and atomic request counters.
+- Preserve policy rows during retention, expire deletion audit records, and clear legacy rows consistently.
+- Validate admin/API arguments and return errors for failed database mutations.
+- Redact common URL credentials and default response-body storage to disabled; enforce UTF-8 byte limits.
+- Repair detail rendering, AJAX failure recovery, counts, pagination, quota fields, and stored-response downloads.
+- Improve dialog keyboard behavior, labels, localization, timezone display, and translated-menu asset loading.
+- Initialize multisite tables and clean scheduled events across network lifecycle operations.
+- Add integration, multisite, worker, DOM, syntax, and WordPress lint checks; document findings and deployment requirements.
 ## v2.5.3 — 2026-02-03
 - Release: Sync versions across package files, Fix Functionality, update docs, and general reforms.
 
@@ -26,5 +40,5 @@ All notable changes to this project are documented in this file.
 
 ## Notes
 - Before running the Database Updater on production, take a database backup.
-- If you upgrade from older versions, run the Database Updater from the Settings page to apply schema changes (adds `response_body` column and creates deleted-audit table).
+- If you upgrade from older versions, run the Database Updater from the Settings page to apply schema changes (adds missing columns, creates the deletion-audit table, and upgrades existing tables in place).
 

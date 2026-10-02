@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ruleset name="ERM Pro">
+    <description>WordPress correctness, security, and maintainable formatting.</description>
+    <file>external-request-manager.php</file>
+    <file>includes</file>
+    <file>templates</file>
+    <config name="installed_paths" value="vendor/wp-coding-standards/wpcs"/>
+    <arg name="extensions" value="php"/>
+    <rule ref="WordPress-Extra">
+        <!-- Preserve the established class filenames and readable PHP expressions. -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.PHP.YodaConditions"/>
+        <exclude name="WordPress.PHP.DisallowShortTernary"/>
+        <!-- HTML/PHP templates use indentation for their HTML hierarchy. -->
+        <exclude name="WordPress.WhiteSpace.PrecisionAlignment"/>
+    </rule>
+</ruleset>

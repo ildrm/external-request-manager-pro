@@ -1,320 +1,152 @@
 # External Request Manager Pro
 
-![Version](https://img.shields.io/badge/version-2.5.3-blue.svg)
-![License](https://img.shields.io/badge/license-GPL--2.0+-green.svg)
-![WordPress](https://img.shields.io/badge/WordPress-5.0+-blue.svg)
+A WordPress plugin for monitoring and controlling external requests made through the WordPress HTTP API.
 
-A professional WordPress plugin for monitoring, analyzing, and controlling external HTTP requests made by your website. Perfect for security audits, performance optimization, and compliance monitoring.
+Plugin version: **2.5.3**. Database schema version: **1.2.0**.
 
-## ✨ Features
+## Features
 
-### Request Monitoring
-- **Real-time Tracking**: Monitor all external HTTP requests in real-time
-- **Detailed Analytics**: View request count, frequency, methods, and response sizes
-- **Source Identification**: Automatically identify requests from plugins, themes, or WordPress core
-- **Request Details**: Inspect full request URLs, methods, sizes, and response codes
-- **Temporal Analysis**: Track first seen and last seen timestamps
+- Aggregate request attempts by hostname and HTTP method, with counts, timestamps, approximate request sizes, and source attribution.
+- Block or allow an entire host across HTTP methods.
+- Limit accepted calls per host within a configurable interval. Exceeding the quota temporarily refuses calls; it does not permanently block the host.
+- Enforce host rules on automatic redirects.
+- Inspect response codes, timings, and optional stored response excerpts.
+- Keep a bounded history of unique URLs, with common query credentials redacted.
+- Filter, search, sort, and paginate the dashboard; choose its optional columns.
+- Delete records with an audit trail containing their original blocking state and the responsible user.
+- Install separate tables for each site during network activation and initialize newly created sites.
 
-### Request Management
-- **Flexible Blocking**: Block or allow specific external hosts
-- **Soft Delete**: Mark requests as deleted without losing history
- - **Hard Delete with Audit**: Permanently remove entries and record deletion metadata in a dedicated audit table (`wp_external_requests_deleted`).
-- **Bulk Operations**: Block, unblock, or delete multiple requests at once
-- **Request Review**: Comprehensive review modal with all request details
-- **Rate Limiting**: Set custom rate limits per host (calls per interval)
-- **Separate by Method**: Track GET and POST requests separately
-- **URL Logging**: Optional tracking of all unique URLs per request (configurable limit)
-- **URL Review Dropdown**: View all logged URLs in the review modal
-- **In-Modal Actions**: Block, delete, or save rate limits directly from review modal
+The plugin covers the WordPress HTTP API. Direct cURL calls, sockets, and independent HTTP clients are outside its scope.
 
-### Professional UI
-- **Advanced Filtering**: Filter by status (blocked/allowed) and search hosts
-- **Customizable Columns**: Choose which columns to display in the table
-- **Professional Pagination**: Configurable items per page (5-200)
+## Installation and upgrades
 
-### Settings & Configuration
-- **Log Retention**: Configurable log retention period (0 = forever)
-- **Auto-Cleanup**: Automatically delete old logs based on retention policy
-- **Notifications**: Optional admin notifications for detected requests
-- **Performance**: Indexed database tables for fast queries
-- **Security**: Nonce verification, capability checks, and proper sanitization
+1. Place the plugin in `wp-content/plugins/external-request-manager-pro/`.
+2. Activate it through WordPress.
+3. Open **External Requests** and configure settings.
+4. On an existing installation, open **Settings → Database Updater** and run the updater when the installed schema version differs from the required version.
 
-### Database & Logs
-- **Comprehensive Logging**: Detailed request information stored in dedicated tables
-- **Deleted Log**: Track deleted entries with deletion metadata
- - **Deleted Log**: Track deleted entries with deletion metadata in `wp_external_requests_deleted`.
- - **Hard Delete**: Deleted items are permanently removed from the main log table and an audit record is inserted into the deleted table.
-- **Status Counts**: Real-time counts of total, blocked, and allowed requests
+The updater changes tables in place and preserves existing records and settings. Schema 1.2.0 adds request correlation tokens and ensures the tables use InnoDB. A legacy MyISAM conversion can lock a large table; schedule the upgrade appropriately and take a database backup.
 
-## 🚀 Installation
+Requirements:
 
-1. Download the plugin files to `/wp-content/plugins/external-request-manager-pro/`
-2. Activate the plugin through the WordPress admin panel
-3. Navigate to **External Requests** in the main menu
-4. Configure settings as needed
+- WordPress 5.0 or later.
+- PHP 7.2 or later.
+- MySQL 5.7 or later, or MariaDB 10.2 or later, with InnoDB and advisory lock support.
 
-### Requirements
-- **WordPress**: 5.0 or higher
-- **PHP**: 7.2 or higher
-- **MySQL**: 5.7 or higher (or MariaDB 10.2+)
+The verification environment and compatibility limits are recorded in [the review report](docs/PLUGIN_REVIEW.md).
 
-## 📖 Usage
+## Dashboard and host rules
 
-### Dashboard
-The main dashboard displays:
-- **Statistics Cards**: Quick overview of total, blocked, and allowed requests
-- **Filter Tabs**: View all requests, blocked only, or allowed only
-- **Search**: Search by host name or URL
-- **Request Table**: Detailed list of all external requests
+Each dashboard row represents one **host/method aggregate**. Summary cards count these rows; the request count on a row counts attempted HTTP API calls. Blocked and rate-limited attempts are included. Responses supplied by an earlier `pre_http_request` handler are respected and are not counted as outgoing requests.
 
-### Managing Requests
-1. **Block/Unblock**: Click the Block/Unblock button on any row
-2. **Bulk Actions**: 
-   - Select multiple requests using checkboxes
-   - Choose action (Block, Unblock, Delete)
-   - Click Apply
-3. **Delete**: Soft-delete entries (can be recovered from database)
-4. **Review**: Click the eye icon to see full request details
+Blocking, unblocking, and changing a rate limit on a row affect every active method for its host. A new method inherits that host's existing policy. Uppercase hostnames and a single trailing DNS dot are treated consistently, including rules stored by older versions.
 
-### Review Modal
-Access comprehensive request details:
-- Request URL and host
-- HTTP method used
-- Total request count
-- Current status (Blocked/Allowed)
-- First seen and last seen dates
-- Source information (plugin/theme)
-- Request size and response code
+Use the row controls or review dialog to inspect a record and change its host policy. Rate limits accept a calls-per-interval value. Removing a limit clears the cached quota state. Redirects within the same host share the accepted call; a redirect to another host checks that target's policy.
 
-### Settings
-Configure the plugin behavior:
-- **Items Per Page**: Set pagination size (5-200 items)
-- **Display Columns**: Choose which columns to show
-- **Log Retention Period**: Days to keep logs (0 = forever)
-- **Auto-Clean**: Enable automatic deletion of old logs
-- **Notifications**: Toggle admin notifications
-- **Track Response**: Toggle whether response details (code/time/body) are stored (`erm_pro_track_response`).
-- **Max Response Body Length**: Integer byte limit for stored response bodies (`erm_pro_max_response_body_length`). Set to `0` to disable storing response bodies.
+## Deletion and retention
 
-### Clear Logs
-Two options available:
-1. **Clear All Except Blocked**: Remove allowed entries, keep blocked for reference
-2. **Clear All & Unblock**: Remove all entries and unblock all hosts
+Deletion permanently removes the selected request rows and creates audit entries. Audit entries are metadata, not recoverable copies of the full request record. The legacy soft-delete API remains for compatibility; dashboard deletion uses hard deletion.
+
+- **Clear All Except Blocked** removes unblocked rows, including their rate-limit rules.
+- **Clear All & Unblock** removes all request rows and their rules, including legacy soft-deleted rows.
+- Automatic retention removes expired unblocked rows without rate-limit rules. It preserves policy rows and expires old deletion-audit entries.
+- A retention period of `0` keeps records indefinitely.
+
+Audit insertion and deletion run in one transaction after schema 1.2.0 is installed. A failed audit insert leaves the request records intact.
+
+## Settings and response privacy
+
+- **Items per page:** 5–200.
+- **Display columns:** optional columns are configurable; host and action controls remain available.
+- **Retention:** 0–3650 days, with optional daily cleanup.
+- **Notifications:** optional notices for newly detected aggregates.
+- **Track response:** enable or disable response code, timing, and excerpt capture.
+- **Max response body length:** a byte limit from 0 to 1 MiB. The default is **0**, so new installations do not store response bodies.
+- **URL history:** optionally retain up to 100 unique URLs per aggregate.
+
+Existing response-body settings are preserved during upgrades. Stored bodies can contain sensitive information. A **Download Stored Response** action exports the stored excerpt as plain text; it cannot recover a body that was truncated or never stored.
+
+New URL records remove user/password credentials, fragments, and common secret query parameters such as tokens, API keys, passwords, and signatures. Older URL records are redacted when displayed but are not rewritten in the database. Redaction does not identify arbitrary secrets in paths, bodies, or every possible parameter name. Disabling body storage does not erase previously stored bodies immediately; subsequent requests replace their response fields, and explicit deletion removes records.
 
 ## Architecture
 
-### File Structure
-```
-external-request-manager-pro/
-├── external-request-manager.php       # Main plugin file
-├── includes/
-│   ├── class-database.php             # Database operations
-│   ├── class-request-logger.php       # Request interception & logging
-│   ├── class-admin-pages.php          # Admin pages setup
-│   ├── class-settings.php             # Settings management
-│   ├── helpers.php                    # Helpers
-│   └── class-ajax.php                 # AJAX handlers
-├── templates/
-│   ├── dashboard.php                  # Main dashboard template
-│   └── settings.php                   # Settings page template
-│   ├── deleted.php                    # Deleted Records template
-├── assets/
-│   ├── css/
-│   │   └── admin.css                  # Admin styling
-│   └── js/
-│       └── admin.js                   # Admin JavaScript
-└── languages/                          # Localization files
-```
+| Path | Responsibility |
+| --- | --- |
+| `external-request-manager.php` | Bootstrap, lifecycle hooks, translations, plugin links |
+| `includes/class-database.php` | Schema, listing, host policies, audited deletion, retention |
+| `includes/class-request-logger.php` | HTTP interception, response correlation, quotas, redirects, source attribution |
+| `includes/class-admin-pages.php` | Admin pages, assets, localized UI configuration |
+| `includes/class-settings.php` | Settings registration, validation, and fields |
+| `includes/class-ajax.php` | Authorized AJAX endpoints and input validation |
+| `includes/helpers.php` | Byte formatting, URL redaction, timezone-aware display |
+| `templates/` | Dashboard, settings, and deletion audit views |
+| `assets/` | Shipped JavaScript and CSS |
+| `tests/` | Syntax, DOM, WordPress integration, multisite, and worker tests |
 
-### Database Tables
+The actual table prefix follows each site's WordPress configuration.
 
-#### `wp_external_requests`
-Stores external request data:
-- `id` - Primary key
-- `host` - Domain/host of external request
-- `url_example` - Example URL
-- `request_method` - HTTP method (GET, POST, etc.)
-- `response_code` - HTTP response code
-- `request_size` - Size of request in bytes
-- `response_time` - Response time in seconds
-- `source_file` - Source file path
-- `source_plugin` - Plugin that made the request
-- `source_theme` - Theme that made the request
-- `request_count` - Total times requested
-- `first_timestamp` - First time requested
-- `last_timestamp` - Last time requested
-- `is_blocked` - Whether requests are blocked (1/0)
-- `is_deleted` - Soft delete flag (1/0)
-- `rate_limit_interval` - Rate limit interval in seconds
-- `rate_limit_calls` - Max calls allowed in interval
-- `notes` - Custom notes
-- `custom_action` - Custom action setting
+`{prefix}external_requests` stores the host/method key, latest example URL, bounded URL history, response fields, `last_request_token`, source fields, counts, first/last timestamps, blocking state, legacy soft-delete state, and rate-limit values. Notes and custom-action columns remain for compatibility.
 
-#### `wp_external_requests_deleted`
-Audit trail for deleted entries:
-- `id` - Primary key
-- `host` - Deleted host
-- `url_example` - Example URL
-- `was_blocked` - Status before deletion
-- `deleted_timestamp` - When deleted
-- `deleted_by_user` - User ID who deleted it
+`{prefix}external_requests_deleted` stores the host, example URL, original blocking state, deletion timestamp, and actor ID. Retention and cron deletions use actor ID `0` when no user is logged in.
 
-## 🔐 Security
-
-- ✅ **Nonce Verification**: All AJAX actions use nonces
-- ✅ **Capability Checks**: Only admins can access the plugin
-- ✅ **Input Sanitization**: All inputs are properly sanitized
-- ✅ **Output Escaping**: All outputs are properly escaped
-- ✅ **Prepared Statements**: Database queries use prepared statements to prevent SQL injection
-- ✅ **Current User Tracking**: Deletion actions track which user performed them
-
-## 🎯 Use Cases
-
-### 1. Security Auditing
-- Monitor unexpected external connections
-- Identify suspicious third-party requests
-- Audit plugin and theme network activity
-
-### 2. Performance Optimization
-- Identify slow external requests
-- Block unnecessary third-party services
-- Analyze request patterns and frequency
-
-### 3. Compliance
-- Track external data transfers
-- Maintain audit trail of blocked hosts
-- Document source of requests
-
-### 4. Development
-- Debug request issues
-- Verify plugin behavior
-- Monitor API usage
-
-## 📊 API Reference
-
-### Database Class Methods
+## API and hooks
 
 ```php
-// Get paginated requests
-ERM_Database::get_requests([
-    'filter' => 'all|blocked|allowed',
-    'search' => 'search term',
-    'per_page' => 25,
-    'paged' => 1
-]);
-
-// Get single request details
-ERM_Database::get_request_detail($id);
-
-// Get status counts
+// Paginated host/method aggregates. Sorting columns are allowlisted.
+ERM_Database::get_requests(
+    array( 'filter' => 'all', 'search' => '', 'per_page' => 25, 'paged' => 1 )
+);
+ERM_Database::get_request_detail( $id );
 ERM_Database::count_by_status();
 
-// Update block status
-ERM_Database::update_request_blocked($id, true/false);
+// Policies apply to all active rows for the selected host.
+ERM_Database::update_request_blocked( $id, true );
+ERM_Database::update_rate_limit( $id, 60, 3 );
 
-// Delete request
-ERM_Database::delete_request($id, true);
-
-// Bulk operations
-ERM_Database::bulk_action($ids, 'block|unblock|delete|restore');
-
-// Clear logs
-ERM_Database::clear_all_logs($except_blocked = false);
-
-// Cleanup old logs
-ERM_Database::cleanup_old_logs($days = 30);
+// Return affected row counts, or false on failure.
+ERM_Database::delete_request( $id, true );
+ERM_Database::bulk_action( $ids, 'delete' );
+ERM_Database::clear_all_logs( false );
+ERM_Database::cleanup_old_logs( 30 );
 ```
 
-### Hooks
+Supported filters:
 
-#### Filters
-```php
-// Modify whether a request should be blocked
-apply_filters('erm_pro_is_blocked', $is_blocked, $host, $url);
+- `erm_pro_is_blocked( $is_blocked, $host, $url )`
+- `erm_pro_before_log( $log_data, $host, $url, $args )`
 
-// Modify request before logging
-apply_filters('erm_pro_before_log', $log_data, $host, $url, $args);
+Supported actions:
+
+- `erm_pro_after_log( $request_id, $host, $url )`
+- `erm_pro_after_clear( $mode )`, with `all` or `except_blocked`
+- `erm_pro_cleanup( $deleted_count )`
+
+The before-log filter can adjust the example URL, request size, and source fields or return a non-array to skip logging. Host/method identity, quota state, correlation tokens, and URL-history bounds remain controlled by the logger.
+
+## Development and verification
+
+```powershell
+rtk proxy composer install
+rtk proxy npm ci
+rtk proxy composer lint
+rtk proxy npm run build
+rtk proxy npm test
 ```
 
-#### Actions
-```php
-// After request is logged
-do_action('erm_pro_after_log', $request_id, $host, $url);
+JavaScript is shipped directly; the build command checks its syntax. Development dependencies are not needed to run the plugin. WordPress integration tests require a disposable database and a loopback HTTP fixture. See [test setup and coverage](tests/README.md), [the detailed review](docs/PLUGIN_REVIEW.md), and [the PR draft](docs/PR_DESCRIPTION.md).
 
-// After logs are cleared
-do_action('erm_pro_after_clear', $mode);
+## Troubleshooting
 
-// During cleanup
-do_action('erm_pro_cleanup', $deleted_count);
-```
+If requests are absent, verify activation, installed schema version, the tables, and that the caller uses the WordPress HTTP API. Check database errors and advisory-lock support. Local site hosts, localhost, IPv4 loopback `127.0.0.1`, and IPv6 loopback `::1` are excluded.
 
-## 🐛 Troubleshooting
+For failed admin actions, confirm the user has `manage_options`, reload an expired nonce, and inspect the returned error. Database failures are reported instead of claiming a successful change.
 
-### Requests not being logged
-- Ensure plugin is activated
-- Check WordPress logs for errors
-- Verify database tables were created during installation
+For storage growth, reduce URL/body limits and configure retention. Retention intentionally preserves blocking and rate-limit policies.
 
-### Settings not saving
-- Check user has manage_options capability
-- Verify database write permissions
-- Clear browser cache and try again
+## License and author
 
-### High memory usage
-- Reduce log retention period
-- Enable auto-cleanup
-- Reduce items per page in settings
+Licensed under GPL-2.0-or-later. See [LICENSE](LICENSE).
 
-## 📝 Changelog
+Author: Yusuf Bahrami — [wcoq.com](https://wcoq.com/).
 
-### Changelog
-
-#### v2.0.1 — 2026-02-02
-- Fix: Correct request counts after Clear/Clear Except operations.
-- Ajax responses now include updated counts so the UI stays in sync.
-- JS: `updateStats()` added to refresh dashboard counts without full reload.
-- Templates and ajax handlers updated to return counts on clear/toggle actions.
-
-#### v2.0.0 — 2026-02-02
-- Feature: Replace soft-deletes with hard deletion and add audit trail table `wp_external_requests_deleted`.
-    - Audit columns: `id`, `host`, `url_example`, `was_blocked`, `deleted_timestamp`, `deleted_by_user`.
-    - Deleted entries admin page added (`templates/deleted.php`).
-- Improvement: Capture response details (response code, response time, response body) more robustly.
-    - Added `response_body` column (LONGTEXT) and truncation per setting.
-    - Detail modal shows response data and offers "Download Full Response".
-- Setting: `erm_pro_track_response` toggle and new `erm_pro_max_response_body_length` setting to control stored response size.
-- Safety: Do not auto-run destructive DB upgrades on plugin load.
-    - Added manual Database Updater UI with `ERM_Database::upgrade()` and an admin AJAX endpoint to trigger it.
-    - Added `ERM_PRO_DB_VERSION` to decouple DB schema version from plugin release version.
-- Misc: Admin notices for DB upgrades and host notices; side-panel ordering and CSS polish for Settings.
-
-### Version 1.2.1 - Previous
-- Basic request monitoring and blocking
-- Simple log management
-
-## 📜 License
-
-This plugin is licensed under the GPL-2.0+ license. See LICENSE file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 📧 Support
-
-For bug reports and feature requests, please use the [GitHub Issues](https://github.com/YusufBahrami/external-request-manager-pro/issues) page.
-
-## 👨‍💻 Author
-
-**Yusuf Bahrami**
-- Website: https://wcoq.com/
-- GitHub: @YusufBahrami
-
----
-
-**Made with ❤️ for WordPress developers**
-
+Report issues through [this repository's issue tracker](https://github.com/ildrm/external-request-manager-pro/issues). See [CHANGELOG.md](CHANGELOG.md) for release history.
