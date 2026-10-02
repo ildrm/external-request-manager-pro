@@ -1,30 +1,30 @@
 {
   "name": "external-request-manager-pro",
   "version": "2.5.3",
-  "description": "Advanced external HTTP requests monitor, blocker & manager with professional UI, detailed analytics, and comprehensive controls",
-  "author": "yusuf Bahrami",
-  "license": "GPL-2.0+",
+  "description": "Advanced external HTTP requests monitor, blocker & manager",
+  "author": "Yusuf Bahrami",
+  "license": "GPL-2.0-or-later",
   "homepage": "https://github.com/yusufbahrami/external-request-manager-pro",
   "repository": {
     "type": "git",
     "url": "https://github.com/yusufbahrami/external-request-manager-pro.git"
   },
+  "private": true,
   "devDependencies": {
-    "@wordpress/scripts": "^24.0.0"
+    "jquery": "^3.7.1",
+    "jsdom": "^24.1.3"
   },
   "scripts": {
-    "build": "wp-scripts build",
-    "start": "wp-scripts start",
-    "lint:php": "phpcs --standard=WordPress .",
-    "lint:js": "eslint assets/js/"
+    "build": "npm run lint:js",
+    "lint:php": "composer lint",
+    "lint:js": "node --check assets/js/admin.js",
+    "test": "node --test tests/admin.test.cjs"
   },
   "keywords": [
     "wordpress",
     "plugin",
     "http-requests",
     "security",
-    "monitoring",
-    "blocker",
-    "external-requests"
+    "monitoring"
   ]
 }

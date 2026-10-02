@@ -1,31 +1,35 @@
 {
-  "name": "yusufbahrami/external-request-manager-pro",
-  "version": "2.5.3",
-  "description": "Advanced external HTTP requests monitor, blocker & manager",
-  "type": "wordpress-plugin",
-  "license": "GPL-2.0+",
-  "authors": [
-    {
-      "name": "yusuf Bahrami",
-      "email": "contact@wcoq.com",
-      "homepage": "https://wcoq.com"
-    }
-  ],
-  "require": {
-    "php": ">=7.2"
-  },
-  "require-dev": {
-    "squizlabs/php_codesniffer": "^3.6",
-    "wp-coding-standards/wpcs": "^2.3"
-  },
-  "scripts": {
-    "lint": "phpcs --standard=WordPress . --ignore=node_modules,vendor"
-  },
-  "keywords": [
-    "wordpress",
-    "plugin",
-    "http-requests",
-    "monitoring",
-    "security"
-  ]
+    "name": "yusufbahrami/external-request-manager-pro",
+    "version": "2.5.3",
+    "description": "Advanced external HTTP requests monitor, blocker & manager",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "yusuf Bahrami",
+            "email": "contact@wcoq.com",
+            "homepage": "https://wcoq.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.2"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.6",
+        "wp-coding-standards/wpcs": "^2.3"
+    },
+    "scripts": {
+        "lint": [
+            "@php tests/lint.php",
+            "@php vendor/bin/phpcs --standard=phpcs.xml.dist"
+        ],
+        "lint:wordpress": "@php vendor/bin/phpcs --standard=phpcs.xml.dist"
+    },
+    "keywords": [
+        "wordpress",
+        "plugin",
+        "http-requests",
+        "monitoring",
+        "security"
+    ]
 }

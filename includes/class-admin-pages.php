@@ -1,174 +1,180 @@
 <?php
-/**
- * Admin Pages Class
- */
-
-class ERM_Admin_Pages {
-    
-    public static function init() {
-        add_action('admin_menu', [self::class, 'register_menus']);
-        add_action('admin_enqueue_scripts', [self::class, 'enqueue_assets']);
-        add_action('admin_notices', [self::class, 'show_notices']);
-    }
-    
-    public static function register_menus() {
-        add_menu_page(
-            __('External Requests Manager', 'erm-pro'),
-            __('Ext. Requests', 'erm-pro'),
-            'manage_options',
-            'erm-pro-logs',
-            [self::class, 'dashboard_page'],
-            'dashicons-shield-alt',
-            82
-        );
-        
-        add_submenu_page(
-            'erm-pro-logs',
-            __('Dashboard', 'erm-pro'),
-            __('Dashboard', 'erm-pro'),
-            'manage_options',
-            'erm-pro-logs',
-            [self::class, 'dashboard_page']
-        );
-        
-        add_submenu_page(
-            'erm-pro-logs',
-            __('Settings', 'erm-pro'),
-            __('Settings', 'erm-pro'),
-            'manage_options',
-            'erm-pro-settings',
-            [self::class, 'settings_page']
-        );
-
-        add_submenu_page(
-            'erm-pro-logs',
-            __('Deleted', 'erm-pro'),
-            __('Deleted', 'erm-pro'),
-            'manage_options',
-            'erm-pro-deleted',
-            [self::class, 'deleted_page']
-        );
-    }
-    
-    public static function enqueue_assets($hook_suffix) {
-        if (strpos($hook_suffix, 'erm-pro') === false) {
-            return;
-        }
-        
-        wp_enqueue_style('erm-pro-admin', ERM_PRO_URL . 'assets/css/admin.css', [], ERM_PRO_VERSION);
-        wp_enqueue_script('erm-pro-admin', ERM_PRO_URL . 'assets/js/admin.js', ['jquery'], ERM_PRO_VERSION, true);
-        
-        wp_localize_script('erm-pro-admin', 'ermProData', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('erm_nonce'),
-            'messages' => [
-                'confirmDelete' => __('Are you sure? This action cannot be undone.', 'erm-pro'),
-                'confirmClearAll' => __('Clear ALL logs? This cannot be undone.', 'erm-pro'),
-                'confirmClearExceptBlocked' => __('Clear all logs except blocked items? This cannot be undone.', 'erm-pro'),
-            ],
-        ]);
-    }
-    
-    public static function show_notices() {
-        if (strpos($_SERVER['REQUEST_URI'] ?? '', 'erm-pro') === false) {
-            return;
-        }
-        
-        if (isset($_GET['cleared'])) {
-            echo '<div class="notice notice-success is-dismissible"><p>' . 
-                 esc_html__('Logs cleared successfully.', 'erm-pro') . 
-                 '</p></div>';
-        }
-
-        // Show transient notifications (if enabled)
-        $enable_notifications = get_option('erm_pro_enable_notifications', true);
-        if ($enable_notifications) {
-            $notes = get_transient('erm_pro_notifications');
-            if (!empty($notes) && is_array($notes)) {
-                foreach ($notes as $n) {
-                    $host = isset($n['host']) ? esc_html($n['host']) : '';
-                    $msg = isset($n['message']) ? esc_html($n['message']) : '';
-                    echo '<div class="notice notice-info is-dismissible"><p>' . $msg . ' <strong>' . $host . '</strong></p></div>';
-                }
-                // remove after showing once
-                delete_transient('erm_pro_notifications');
-            }
-        }
-
-        // If DB version mismatch, show upgrade notice
-        $current_db_version = get_option('erm_pro_db_version', '');
-        if ($current_db_version !== ERM_PRO_DB_VERSION) {
-            $settings_link = admin_url('admin.php?page=erm-pro-settings');
-            echo '<div class="notice notice-warning is-dismissible"><p>' .
-                 esc_html__('Database schema is out of date for External Request Manager Pro.', 'erm-pro') . ' ' .
-                 sprintf('<a href="%s">%s</a>', esc_url($settings_link), esc_html__('Run DB Updater', 'erm-pro')) .
-                 '</p></div>';
-        }
-    }
-    
-    public static function dashboard_page() {
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Permission denied', 'erm-pro'));
-        }
-        
-        $filter = isset($_GET['filter']) ? sanitize_text_field($_GET['filter']) : 'all';
-        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        $search_by = isset($_GET['search_by']) ? sanitize_text_field($_GET['search_by']) : '';
-        $paged = isset($_GET['paged']) ? max(1, (int) $_GET['paged']) : 1;
-        
-        $per_page = get_option('erm_pro_per_page', 25);
-        
-        $results = ERM_Database::get_requests([
-            'filter' => $filter,
-            'search' => $search,
-            'search_by' => $search_by,
-            'per_page' => $per_page,
-            'paged' => $paged,
-        ]);
-        
-        $counts = ERM_Database::count_by_status();
-        $display_columns = get_option('erm_pro_display_columns', ['host', 'count', 'status', 'last_request']);
-        
-        require ERM_PRO_DIR . 'templates/dashboard.php';
-    }
-    
-    public static function settings_page() {
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Permission denied', 'erm-pro'));
-        }
-        
-        $retention_days = get_option('erm_pro_retention_days', 30);
-        $auto_clean = get_option('erm_pro_auto_clean', true);
-        $per_page = get_option('erm_pro_per_page', 25);
-        $display_columns = get_option('erm_pro_display_columns', ['host', 'count', 'status', 'last_request']);
-        
-        require ERM_PRO_DIR . 'templates/settings.php';
-    }
-
-    public static function deleted_page() {
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Permission denied', 'erm-pro'));
-        }
-
-        $paged = isset($_GET['paged']) ? max(1, (int) $_GET['paged']) : 1;
-        $per_page = get_option('erm_pro_per_page', 25);
-
-        global $wpdb;
-        $table = $wpdb->prefix . ERM_PRO_TABLE_DELETED;
-
-        $offset = ($paged - 1) * $per_page;
-
-        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table");
-        $data = $wpdb->get_results($wpdb->prepare("SELECT * FROM $table ORDER BY deleted_timestamp DESC LIMIT %d OFFSET %d", $per_page, $offset));
-
-        $results = [
-            'total' => $total,
-            'data' => $data,
-            'paged' => $paged,
-            'per_page' => $per_page,
-        ];
-
-        require ERM_PRO_DIR . 'templates/deleted.php';
-    }
+/** WordPress admin pages, assets, and notices. */
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
-?>
+
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- WP 5.0 does not support identifier placeholders. Table names use the trusted WP prefix and fixed constants; SQL fragments are internal or allowlisted, and values use prepare().
+class ERM_Admin_Pages {
+	private static $page_hooks = array();
+	public static function init() {
+		add_action( 'admin_menu', array( self::class, 'register_menus' ) );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue_assets' ) );
+		add_action( 'admin_notices', array( self::class, 'show_notices' ) );
+	}
+
+	public static function register_menus() {
+		self::$page_hooks[] = add_menu_page(
+			__( 'External Requests Manager', 'erm-pro' ),
+			__( 'Ext. Requests', 'erm-pro' ),
+			'manage_options',
+			'erm-pro-logs',
+			array( self::class, 'dashboard_page' ),
+			'dashicons-shield-alt',
+			82
+		);
+		foreach ( array(
+			'logs'     => 'Dashboard',
+			'settings' => 'Settings',
+			'deleted'  => 'Deleted',
+		) as $slug => $title ) {
+			$titles             = array(
+				'logs'     => __( 'Dashboard', 'erm-pro' ),
+				'settings' => __( 'Settings', 'erm-pro' ),
+				'deleted'  => __( 'Deleted', 'erm-pro' ),
+			);
+			self::$page_hooks[] = add_submenu_page(
+				'erm-pro-logs',
+				$titles[ $slug ],
+				$titles[ $slug ],
+				'manage_options',
+				'erm-pro-' . $slug,
+				array( self::class, $slug === 'logs' ? 'dashboard_page' : $slug . '_page' )
+			);
+		}
+	}
+
+	public static function enqueue_assets( $hook_suffix ) {
+		if ( ! current_user_can( 'manage_options' ) || ! in_array( $hook_suffix, self::$page_hooks, true ) ) {
+			return;
+		}
+		wp_enqueue_style( 'erm-pro-admin', ERM_PRO_URL . 'assets/css/admin.css', array(), ERM_PRO_VERSION . '.' . filemtime( ERM_PRO_DIR . 'assets/css/admin.css' ) );
+		wp_enqueue_script( 'erm-pro-admin', ERM_PRO_URL . 'assets/js/admin.js', array( 'jquery' ), ERM_PRO_VERSION . '.' . filemtime( ERM_PRO_DIR . 'assets/js/admin.js' ), true );
+		wp_localize_script(
+			'erm-pro-admin',
+			'ermProData',
+			array(
+				'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+				'nonce'    => wp_create_nonce( 'erm_nonce' ),
+				'messages' => array(
+					'confirmDelete'             => __( 'Delete the selected logs and their rules? This action cannot be undone.', 'erm-pro' ),
+					'confirmClearAll'           => __( 'Permanently delete ALL logs and unblock all hosts? This action cannot be undone.', 'erm-pro' ),
+					'confirmClearExceptBlocked' => __( 'Permanently delete allowed logs and their rate limits while keeping blocked entries? This action cannot be undone.', 'erm-pro' ),
+					'selectAction'              => __( 'Please select an action', 'erm-pro' ),
+					'selectItem'                => __( 'Please select at least one item', 'erm-pro' ),
+					'error'                     => __( 'The request failed. Refresh the page and try again.', 'erm-pro' ),
+					'running'                   => __( 'Running…', 'erm-pro' ),
+					'failed'                    => __( 'Failed', 'erm-pro' ),
+					'invalidRateLimit'          => __( 'Enter a valid interval and number of calls.', 'erm-pro' ),
+				),
+				'labels'   => array(
+					'host'     => __( 'Host', 'erm-pro' ),
+					'url'      => __( 'URL', 'erm-pro' ),
+					'method'   => __( 'Method', 'erm-pro' ),
+					'source'   => __( 'Source', 'erm-pro' ),
+					'count'    => __( 'Request Count', 'erm-pro' ),
+					'status'   => __( 'Status', 'erm-pro' ),
+					'first'    => __( 'First Seen', 'erm-pro' ),
+					'last'     => __( 'Last Seen', 'erm-pro' ),
+					'file'     => __( 'Source File', 'erm-pro' ),
+					'size'     => __( 'Request Size', 'erm-pro' ),
+					'code'     => __( 'Response Code', 'erm-pro' ),
+					'time'     => __( 'Response Time', 'erm-pro' ),
+					'body'     => __( 'Stored Response Data', 'erm-pro' ),
+					'urls'     => __( 'Logged URLs', 'erm-pro' ),
+					'noUrls'   => __( 'No URLs are available', 'erm-pro' ),
+					'download' => __( 'Download Stored Response', 'erm-pro' ),
+					'block'    => __( 'Block', 'erm-pro' ),
+					'unblock'  => __( 'Unblock', 'erm-pro' ),
+				),
+			)
+		);
+	}
+
+	private static function query( $key, $default = '' ) {
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only admin filters do not mutate data.
+		return isset( $_GET[ $key ] ) && is_scalar( $_GET[ $key ] ) ?
+			sanitize_text_field( wp_unslash( (string) $_GET[ $key ] ) ) : $default;
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+	}
+
+	public static function show_notices() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		// Also show migration notices away from the plugin screen.
+		if ( get_option( 'erm_pro_db_version', '' ) !== ERM_PRO_DB_VERSION ) {
+			echo '<div class="notice notice-warning"><p>' .
+				esc_html__( 'Database schema is out of date for External Request Manager Pro.', 'erm-pro' ) . ' ' .
+				'<a href="' . esc_url( admin_url( 'admin.php?page=erm-pro-settings' ) ) . '">' .
+				esc_html__( 'Run DB Updater', 'erm-pro' ) . '</a></p></div>';
+		}
+		if ( ! in_array( self::query( 'page' ), array( 'erm-pro-logs', 'erm-pro-settings', 'erm-pro-deleted' ), true ) ||
+			! get_option( 'erm_pro_enable_notifications', true ) ) {
+			return;
+		}
+		$notes = get_transient( 'erm_pro_notifications' );
+		if ( is_array( $notes ) ) {
+			foreach ( $notes as $note ) {
+				echo '<div class="notice notice-info is-dismissible"><p>' .
+					esc_html( $note['message'] ?? '' ) . '</p></div>';
+			}
+			delete_transient( 'erm_pro_notifications' );
+		}
+	}
+
+	public static function dashboard_page() {
+		self::authorize();
+		$filter          = self::query( 'filter', 'all' );
+		$filter          = in_array( $filter, array( 'all', 'blocked', 'allowed' ), true ) ? $filter : 'all';
+		$search          = self::query( 's' );
+		$search_by       = self::query( 'search_by' );
+		$results         = ERM_Database::get_requests(
+			array(
+				'filter'    => $filter,
+				'search'    => $search,
+				'search_by' => $search_by,
+				'paged'     => max( 1, (int) self::query( 'paged', '1' ) ),
+			)
+		);
+		$per_page        = $results['per_page'];
+		$paged           = $results['paged'];
+		$counts          = ERM_Database::count_by_status();
+		$display_columns = ERM_Settings::sanitize_columns( get_option( 'erm_pro_display_columns' ) );
+		require ERM_PRO_DIR . 'templates/dashboard.php';
+	}
+
+	public static function settings_page() {
+		self::authorize();
+		require ERM_PRO_DIR . 'templates/settings.php';
+	}
+
+	public static function deleted_page() {
+		self::authorize();
+		$per_page = ERM_Settings::sanitize_per_page( get_option( 'erm_pro_per_page', 25 ) );
+		global $wpdb;
+		$table   = $wpdb->prefix . ERM_PRO_TABLE_DELETED;
+		$total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table" );
+		$paged   = min( max( 1, (int) self::query( 'paged', '1' ) ), max( 1, (int) ceil( $total / $per_page ) ) );
+		$data    = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM $table ORDER BY deleted_timestamp DESC, id DESC LIMIT %d OFFSET %d",
+				$per_page,
+				( $paged - 1 ) * $per_page
+			)
+		);
+		$results = array(
+			'total'    => $total,
+			'data'     => $data,
+			'paged'    => $paged,
+			'per_page' => $per_page,
+		);
+		require ERM_PRO_DIR . 'templates/deleted.php';
+	}
+
+	private static function authorize() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permission denied', 'erm-pro' ) );
+		}
+	}
+}
